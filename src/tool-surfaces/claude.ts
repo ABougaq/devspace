@@ -38,7 +38,7 @@ export function registerClaudeTools(context: ToolRegistrationContext): void {
 
 const CLAUDE_SHELL_DESCRIPTION = "Run a shell command in a workspace with the user's local permissions.";
 
-function registerClaudeMutationTools(context: ToolRegistrationContext): void {
+export function registerClaudeMutationTools(context: ToolRegistrationContext): void {
   const { server, config, workspaces } = context;
 
   server.registerTool(

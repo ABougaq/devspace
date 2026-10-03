@@ -91,12 +91,13 @@ After restarting, refresh tokens for removed aliases can no longer mint tokens.
 
 ## Tool modes and UI
 
-`tools.mode` accepts two values:
+`tools.mode` accepts three values:
 
 | Value | Tool surface |
 | --- | --- |
 | `codex` | Default. `open_workspace`, `read`, `apply_patch`, `exec_command`, `write_stdin`, and `show_changes`. |
 | `claude` | `open_workspace`, `read`, `write`, `edit`, `bash`, and `show_changes`. |
+| `hybrid` | `open_workspace`, `read`, `write`, `edit`, `exec_command`, `write_stdin`, and `show_changes`. |
 
 The dedicated MCP tools `grep`, `glob`, and `ls` are not exposed. Each mode uses
 its shell tool with programs such as `rg`, `find`, and `ls` when it needs those
