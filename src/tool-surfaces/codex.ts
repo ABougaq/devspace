@@ -139,7 +139,7 @@ function registerApplyPatchTool(context: ToolRegistrationContext): void {
   );
 }
 
-function registerCodexProcessTools(context: ToolRegistrationContext): void {
+export function registerCodexProcessTools(context: ToolRegistrationContext): void {
   const { server, config, workspaces, processSessions } = context;
 
   server.registerTool(

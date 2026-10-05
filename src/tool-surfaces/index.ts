@@ -1,6 +1,7 @@
 import type { ToolMode } from "../config.js";
 import { codexInstructions, registerCodexTools } from "./codex.js";
 import { claudeInstructions, registerClaudeTools } from "./claude.js";
+import { hybridInstructions, registerHybridTools } from "./hybrid.js";
 import { type ToolSurface } from "./types.js";
 
 const TOOL_SURFACES: Record<ToolMode, ToolSurface> = {
@@ -11,6 +12,10 @@ const TOOL_SURFACES: Record<ToolMode, ToolSurface> = {
   codex: {
     register: registerCodexTools,
     instructions: codexInstructions,
+  },
+  hybrid: {
+    register: registerHybridTools,
+    instructions: hybridInstructions,
   },
 };
 

@@ -23,7 +23,7 @@ const storageConfigSchema = z.object({
 }).strict().prefault({});
 
 const toolsConfigSchema = z.object({
-  mode: z.enum(["claude", "codex"]).default("codex"),
+  mode: z.enum(["claude", "codex", "hybrid"]).default("codex"),
 }).strict().prefault({});
 
 const uiConfigSchema = z.object({
