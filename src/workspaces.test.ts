@@ -132,6 +132,95 @@ test("worktree opens require Git and create an isolated managed workspace", asyn
   assert.equal(resolvedReadme, await realpath(join(opened.workspace.root, "README.md")));
 });
 
+test("worktree opens a remote pinned commit absent from a stale dirty checkout", async (t) => {
+  const context = await fixture(t);
+  const gitRoot = await createGitProject(context.root);
+  const sourceHead = await git(gitRoot, ["rev-parse", "HEAD"]);
+  const remote = join(context.root, "publisher");
+
+  await git(context.root, ["clone", gitRoot, remote]);
+  await git(remote, ["config", "user.email", "devspace@example.com"]);
+  await git(remote, ["config", "user.name", "DevSpace Test"]);
+  await writeFile(join(remote, "new.txt"), "published later\n");
+  await git(remote, ["add", "new.txt"]);
+  await git(remote, ["commit", "-m", "Remote advance"]);
+  const remoteSha = await git(remote, ["rev-parse", "HEAD"]);
+
+  await git(gitRoot, ["remote", "add", "origin", remote]);
+  await writeFile(join(gitRoot, "untracked.keep"), "preserve me\n");
+  await assert.rejects(() => git(gitRoot, ["cat-file", "-e", `${remoteSha}^{commit}`]));
+
+  const opened = await context.registry.openWorkspace({
+    path: gitRoot,
+    mode: "worktree",
+    baseRef: remoteSha,
+  });
+
+  assert.equal(opened.workspace.worktree?.baseSha, remoteSha);
+  assert.equal(await git(opened.workspace.root, ["rev-parse", "HEAD"]), remoteSha);
+  assert.equal(await git(gitRoot, ["rev-parse", "HEAD"]), sourceHead);
+  assert.equal(await git(gitRoot, ["status", "--short"]), "?? untracked.keep");
+});
+
+test("an unreachable pinned SHA never creates a worktree at another commit", async (t) => {
+  const context = await fixture(t);
+  const gitRoot = await createGitProject(context.root);
+  const sourceHead = await git(gitRoot, ["rev-parse", "HEAD"]);
+  await git(gitRoot, ["remote", "add", "origin", gitRoot]);
+
+  await assert.rejects(
+    () => context.registry.openWorkspace({
+      path: gitRoot,
+      mode: "worktree",
+      baseRef: "f".repeat(40),
+    }),
+    (error: unknown) => error instanceof GitWorktreeError
+      && error.code === "GIT_INVALID_BASE_REF"
+      && /could not be fetched from origin/.test(error.message),
+  );
+
+  assert.equal(await git(gitRoot, ["rev-parse", "HEAD"]), sourceHead);
+  assert.equal((await git(gitRoot, ["worktree", "list", "--porcelain"])).includes(context.config.worktreeRoot), false);
+});
+
+test("local pinned commits need no origin and symbolic typos never trigger fetching", async (t) => {
+  const context = await fixture(t);
+  const gitRoot = await createGitProject(context.root);
+  const localSha = await git(gitRoot, ["rev-parse", "HEAD"]);
+  const opened = await context.registry.openWorkspace({
+    path: gitRoot,
+    mode: "worktree",
+    baseRef: localSha,
+  });
+  assert.equal(opened.workspace.worktree?.baseSha, localSha);
+
+  await assert.rejects(
+    () => context.registry.openWorkspace({
+      path: gitRoot,
+      mode: "worktree",
+      baseRef: "missing-symbolic-ref",
+    }),
+    (error: unknown) => error instanceof GitWorktreeError
+      && error.code === "GIT_INVALID_BASE_REF"
+      && /does not resolve to a commit/.test(error.message),
+  );
+});
+
+test("a missing pinned SHA with no origin reports an actionable error", async (t) => {
+  const context = await fixture(t);
+  const gitRoot = await createGitProject(context.root);
+  await assert.rejects(
+    () => context.registry.openWorkspace({
+      path: gitRoot,
+      mode: "worktree",
+      baseRef: "e".repeat(40),
+    }),
+    (error: unknown) => error instanceof GitWorktreeError
+      && error.code === "GIT_INVALID_BASE_REF"
+      && /Verify remote access and the commit SHA/.test(error.message),
+  );
+});
+
 test("persisted checkout and worktree sessions restore after recreating the registry", async (t) => {
   const context = await fixture(t);
   const gitRoot = await createGitProject(context.root);

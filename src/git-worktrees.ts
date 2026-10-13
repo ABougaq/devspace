@@ -498,6 +498,28 @@ async function resolveBaseCommit(sourceRoot: string, baseRef: string): Promise<s
       );
     }
 
+    // A pinned remote commit may be newer than the user's deliberately stale checkout.
+    // Fetch only the requested object, never update branches or switch the source checkout.
+    if (/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i.test(baseRef)) {
+      try {
+        await execFileAsync(
+          "git",
+          ["fetch", "--no-tags", "--no-recurse-submodules", "origin", baseRef],
+          {
+            cwd: sourceRoot,
+            timeout: 30_000,
+            env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+          },
+        );
+        return (await git(["rev-parse", "--verify", `${baseRef}^{commit}`], sourceRoot)).trim();
+      } catch {
+        throw new GitWorktreeError(
+          "GIT_INVALID_BASE_REF",
+          `Cannot open workspace in worktree mode because baseRef ${JSON.stringify(baseRef)} is missing locally and its exact commit could not be fetched from origin. Verify remote access and the commit SHA.`,
+        );
+      }
+    }
+
     throw new GitWorktreeError(
       "GIT_INVALID_BASE_REF",
       `Cannot open workspace in worktree mode because baseRef ${JSON.stringify(baseRef)} does not resolve to a commit.`,
